@@ -15,13 +15,22 @@ async function runWorker() {
   logger.info("Worker started");
 
   // Infinite loop by design: Sevalla background worker pods restart on completion.
+  let idleTicks = 0;
   while (true) {
     const events = await store.claimQueuedWebhookEvents(10);
     if (events.length === 0) {
+      idleTicks += 1;
+      // ~60s with 2s sleep: confirms worker is alive when queue is empty (common before webhooks/backfill).
+      if (idleTicks % 30 === 0) {
+        logger.info(
+          "Worker idle: webhook queue empty — point Airwallex webhooks at POST /webhooks/airwallex, or run npm run start:backfill once"
+        );
+      }
       await sleep(2000);
       continue;
     }
 
+    idleTicks = 0;
     logger.info({ count: events.length }, "Claimed queued webhook events");
 
     for (const ev of events) {
@@ -43,4 +52,5 @@ runWorker().catch((err) => {
   logger.error({ err }, "Worker crashed");
   process.exit(1);
 });
+
 
