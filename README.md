@@ -49,14 +49,24 @@ Run:
 
 ## Production runbook
 1. Switch Airwallex credentials/webhook secret to production.
-2. Set `BACKFILL_START_DATE` and `BACKFILL_END_DATE` (ISO 8601 strings).
+2. Set `BACKFILL_START_DATE` and `BACKFILL_END_DATE` (any **ISO 8601** instant, e.g. `2026-03-12T01:00:00+08:00` or `...Z`). The client converts them to **UTC** for Airwallex (`from_created_at` / `to_created_at` do not accept `+08:00` style directly).
 3. Run one-time backfill:
    - `npm run start:backfill`
 4. Enable webhooks in Airwallex to deliver Billing events to your Sevalla `web` URL.
 5. Enable the Sevalla `cron` schedule (daily reconciliation).
 
+## No data in ChartMogul?
+Deploying **web** + **worker** does not load history by itself. ChartMogul only updates when:
+
+1. **Backfill** — You run **`npm run start:backfill`** once (same env as production), with `BACKFILL_START_DATE` / `BACKFILL_END_DATE` set. This is a **separate one-off job**, not the default `web`/`worker` start commands.
+2. **Webhooks** — Airwallex must **POST** Billing events to `https://<your-app-host>/webhooks/airwallex` with **`AIRWALLEX_WEBHOOK_SECRET`** matching the secret in Airwallex. Wrong URL, wrong environment (demo vs live), or bad signature → nothing is queued → worker stays idle.
+3. **Cron** — Reconciliation re-imports recent paid invoices; it does not replace backfill for old history.
+
+In runtime logs you should see **`Claimed queued webhook events`** after Airwallex delivers webhooks. If the worker only shows **idle** / **`Worker started`**, the queue is empty: fix webhooks and/or run backfill.
+
 ## Idempotency + correctness
 - Webhook events are deduplicated by Airwallex `event.id`.
 - Invoice imports are deduplicated by Airwallex `invoice.id`.
 - Reconciliation re-imports the last N days to recover from missed webhooks.
+
 
