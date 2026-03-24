@@ -8,6 +8,13 @@ export type WebhookEventRow = {
   attempts: number;
 };
 
+type ClaimedWebhookRow = {
+  event_id: string;
+  event_name: string;
+  payload: unknown;
+  attempts: number;
+};
+
 export class Store {
   private pool: Pool;
 
@@ -104,7 +111,7 @@ export class Store {
       [limit]
     );
 
-    return res.rows.map((r) => ({
+    return (res.rows as ClaimedWebhookRow[]).map((r) => ({
       eventId: r.event_id,
       eventName: r.event_name,
       payload: r.payload,
@@ -275,4 +282,3 @@ export class Store {
     }
   }
 }
-
