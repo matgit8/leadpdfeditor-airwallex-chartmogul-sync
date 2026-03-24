@@ -28,8 +28,8 @@ export function createServer() {
 
 export async function startServer() {
   const app = createServer();
-  app.listen(config.PORT, () => {
-    logger.info({ port: config.PORT }, "Webhook server listening");
+  const host = "0.0.0.0";
+  app.listen(config.PORT, host, () => {
+    logger.info({ port: config.PORT, host }, "Webhook server listening");
   });
 }
-
